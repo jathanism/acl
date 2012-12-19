@@ -33,3 +33,12 @@ nosetests.xml
 .mr.developer.cfg
 .project
 .pydevproject
+
+# Vim temp files
+.*.swp
+
+# Mac OS index files
+.DS_Store
+
+# Docutils (docs) build dir
+_build
