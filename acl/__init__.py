@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Trigger's ACL parser.
+Network access control list (ACL) & firewall policy parsing library.
 
 This library contains various modules that allow for parsing, manipulation,
 and management of network access control lists (ACLs). It will parse a complete
@@ -12,17 +12,13 @@ vendor syntax.
 __author__ = 'Jathan McCollum'
 __maintainer__ = 'Jathan McCollum'
 __email__ = 'jathan.mccollum@teamaol.com'
-__copyright__ = 'Copyright 2010-2012, AOL Inc.'
+__copyright__ = 'Copyright 2010-2013, AOL Inc.'
+__version__ = (0, 1)
 
-import os
-from trigger.conf import settings
+full_version = '.'.join(str(x) for x in __version__)
+release = full_version
+short_version = '.'.join(str(x) for x in __version__[0:3])
+
 from trigger.acl.parser import *
 
-__all__ = ['acl_exists', 'parse', 'ACL']
-#__all__.extend(list(parser.__all__)) # Include parser.__all__ (duh!)
-
-
-# Functions
-def acl_exists(name):
-    return os.access(settings.FIREWALL_DIR + '/acl.' + name, os.R_OK)
-
+__all__ = ['parse', 'ACL']
