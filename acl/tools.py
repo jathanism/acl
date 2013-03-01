@@ -17,11 +17,14 @@ import os
 import re
 import sys
 import tempfile
-from trigger.acl.parser import *
+from time import strftime,localtime
+
+from .parser import *
 from trigger.conf import settings
 
 
 # Defaults
+FIREWALL_DIR = '/data/firewalls'
 DEBUG = False
 DATE_FORMAT = "%Y-%m-%d"
 DEFAULT_EXPIRE = 6 * 30 # 6 months
@@ -315,93 +318,6 @@ def create_new_acl(old_file, terms_to_be_added):
 
     return new_acl
 
-def get_bulk_acls():
-    """
-    Returns a dict of acls with an applied count over settings.AUTOLOAD_BULK_THRESH
-    """
-    from trigger.netdevices import NetDevices
-    nd = NetDevices()
-    all_acls = defaultdict(int)
-    for dev in nd.all():
-        for acl in dev.acls:
-            all_acls[acl] += 1
-
-    bulk_acls = {}
-    for acl, count in all_acls.items():
-        if count >= settings.AUTOLOAD_BULK_THRESH and acl != '':
-            bulk_acls[acl] = count
-
-    return bulk_acls
-
-def process_bulk_loads(work, max_hits=settings.BULK_MAX_HITS_DEFAULT, force_bulk=False):
-    """
-    Formerly "process --ones".
-
-    Processes work dict and determines tuple of (prefix, site) for each device.  Stores
-    tuple as a dict key in prefix_hits. If prefix_hits[(prefix, site)] is greater than max_hits,
-    remove all further matching devices from work dict.
-
-    By default if a device has no acls flagged as bulk_acls, it is not removed from the work dict.
-
-    Example:
-        * Device 'foo1-xyz.example.com' returns ('foo', 'xyz') as tuple.
-        * This is stored as prefix_hits[('foo', 'xyz')] = 1
-        * All further devices matching that tuple increment the hits for that tuple
-        * Any devices matching hit counter exceeds max_hits is removed from work dict
-
-    You may override max_hits to increase the num. of devices on which to load a bulk acl.
-    You may pass force_bulk=True to treat all loads as bulk loads.
-    """
-
-    prefix_pat = re.compile(r'^([a-z]+)\d{0,2}-([a-z0-9]+)')
-    prefix_hits = defaultdict(int)
-    import trigger.acl.db as adb
-    bulk_acls = adb.get_bulk_acls()
-    nd = adb.get_netdevices()
-
-    if DEBUG:
-        print 'DEVLIST:', sorted(work)
-
-    # Sort devices numerically
-    for dev in sorted(work):
-        if DEBUG: print 'Doing', dev
-
-        #testacls = dev.bulk_acls
-        #if force_bulk:
-        #    testacls = dev.acls
-        testacls = dev.acls if force_bulk else dev.bulk_acls
-
-        for acl in testacls:  #only look at each acl once, but look at all acls if bulk load forced
-            if acl in work[dev]:
-            #if acl in work[router]:
-                if DEBUG: print 'Determining threshold for acl ', acl, ' on device ', dev, '\n'
-                if acl in settings.BULK_MAX_HITS:
-                    max_hits = settings.BULK_MAX_HITS[acl]
-
-                try:
-                    prefix_site = prefix_pat.findall(dev.nodeName)[0]
-                except IndexError:
-                    continue
-                
-                # Mark a hit for this tuple, and dump remaining matches
-                prefix_hits[prefix_site] += 1
-
-                if DEBUG: print prefix_site, prefix_hits[prefix_site]
-                if prefix_hits[prefix_site] > max_hits:
-                                
-                    msg =  "Removing %s on %s from job queue: threshold of %d exceeded for " \
-                           "'%s' devices in '%s'" % (acl, dev, max_hits, prefix_site[0], prefix_site[1])
-                    print msg
-                    if 'log' in globals():
-                        log.msg(msg)
-
-                    # Remove that acl from being loaded, but still load on that device
-                    work[dev].remove(acl)
-                    #work[router].remove(acl)
-
-    #done with all the devices                
-    return work
-
 def get_comment_matches(aclobj, requests):
     """Given an ACL object and a list of ticket numbers return a list of matching comments."""
     matches = set()
@@ -458,35 +374,27 @@ def diff_files(old, new):
     """Return a unified diff between two files"""
     return os.popen('diff -Naur %s %s' % (old, new)).read()
 
-def worklog(title, diff, log_string='updated by express-gen'):
+def worklog(title, diff, log_string='updated by express-gen',
+            firewall_dir=FIREWALL_DIR):
     """Save a diff to the ACL worklog"""
-    from time import strftime,localtime
-    from trigger.utils.rcs import RCS
+    from .rcs import RCS
 
     date = strftime('%Y%m%d', localtime())
-    file = os.path.join(settings.FIREWALL_DIR, 'workdocs', 'workdoc.' + date)
-    rcs = RCS(file)
+    filepath = os.path.join(firewall_dir, 'workdocs', 'workdoc.' + date)
+    rcs = RCS(filepath)
 
-    if not os.path.isfile(file):
-        print 'Creating new worklog %s' % file
-        f = open(file,"w")
-        f.write("# vi:noai:\n\n")
-        f.close()
+    if not os.path.isfile(filepath):
+        print 'Creating new worklog %s' % filepath
+        with open(file, "w") as f:
+            f.write("# vi:noai:\n\n")
         rcs.checkin('.')
 
-    print 'inserting the diff into the worklog %s' % file
+    print 'inserting the diff into the worklog %s' % filepath
     rcs.lock_loop()
-    fd = open(file,"a")
-    fd.write('"%s"\n' % title)
-    fd.write(diff)
-    fd.close()
-
-    print 'inserting %s into the load queue' % title
+    with open(filename, "a") as fd:
+        fd.write('"%s"\n' % title)
+        fd.write(diff)
     rcs.checkin(log_string)
-
-    # Use acl to insert into queue, should be replaced with API call
-    os.spawnlp(os.P_WAIT, 'acl', 'acl', '-i', title)
-
 
 # Classes
 class ACLScript:
