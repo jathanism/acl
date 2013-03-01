@@ -12,7 +12,7 @@ is to catch all the errors that we see in practice, and to accept all
 the ACLs that we use in practice, rather than to try to reject *every*
 invalid ACL and accept *every* valid ACL.
 
->>> from trigger.acl import parse
+>>> from acl import parse
 >>> aclobj = parse("access-list 123 permit tcp any host 10.20.30.40 eq 80")
 >>> aclobj.terms
 [<Term: None>]
@@ -30,7 +30,7 @@ from simpleparse.dispatchprocessor import (DispatchProcessor, dispatch,
                                            dispatchList)
 from simpleparse.parser import Parser
 import socket
-from trigger import exceptions
+from . import exceptions
 
 
 # Exports
@@ -527,7 +527,7 @@ class RangeList(object):
 
 class TIP(IPy.IP):
     """
-    Class based on IPy.IP, but with extensions for Trigger.
+    Class based on IPy.IP, but with extensions for accesss-lists.
 
     Currently, only the only extension is the ability to negate a network
     block. Only used internally within the parser, as it's not complete
@@ -687,16 +687,20 @@ class ACL(object):
     An abstract access-list object intended to be created by the :func:`parse`
     function.
     """
-    def __init__(self, name=None, terms=None, format=None, family=None):
+    def __init__(self, name=None, terms=None, policers=None, format=None, family=None):
         check_name(name, exceptions.ACLNameError, max_len=24)
         self.name = name
         self.family = family
         self.format = format
-        self.policers = []
-        if terms:
-            self.terms = terms
-        else:
-            self.terms = TermList()
+
+        if policers is None:
+            policers = []
+        self.policers = policers
+
+        if terms is None:
+            terms = TermList()
+        self.terms = terms
+
         global Comments
         self.comments = Comments
         Comments = []
@@ -707,15 +711,15 @@ class ACL(object):
     def __str__(self):
         return '\n'.join(self.output(format=self.format, family=self.family))
 
-    def output(self, format=None, *largs, **kwargs):
+    def output(self, format=None, *args, **kwargs):
         """
         Output the ACL data in the specified format.
         """
         if format is None:
             format = self.format
-        return getattr(self, 'output_' + format)(*largs, **kwargs)
+        return getattr(self, 'output_' + format)(*args, **kwargs)
 
-    def output_junos(self, replace=False, family=None):
+    def output_junos(self, replace=False, family=None, **kwargs):
         """
         Output the ACL in JunOS format.
 
@@ -768,7 +772,7 @@ class ACL(object):
 
         return out
 
-    def output_ios(self, replace=False):
+    def output_ios(self, replace=False, **kwargs):
         """
         Output the ACL in IOS traditional format.
 
@@ -792,7 +796,7 @@ class ACL(object):
             out += [x for x in t.output_ios(prefix)]
         return out
 
-    def output_ios_brocade(self, replace=False, receive_acl=False):
+    def output_ios_brocade(self, replace=False, receive_acl=False, **kwargs):
         """
         Output the ACL in Brocade-flavored IOS format.
 
@@ -820,7 +824,7 @@ class ACL(object):
 
         return out
 
-    def output_ios_named(self, replace=False):
+    def output_ios_named(self, replace=False, **kwargs):
         """
         Output the ACL in IOS named format.
 
@@ -838,7 +842,7 @@ class ACL(object):
             out += [x for x in t.output_ios_named(' ')]
         return out
 
-    def output_iosxr(self, replace=False):
+    def output_iosxr(self, replace=False, **kwargs):
         """
         Output the ACL in IOS XR format.
 
@@ -879,6 +883,14 @@ class ACL(object):
                 t.name = 'T%d' % n
                 n += 1
 
+    def number_terms(self):
+        """Assign numbers to all unnamed terms."""
+        n = 1
+        for t in self.terms:
+            if t.name is None:
+                t.name = '%d' % n
+                n += 1
+
     def strip_comments(self):
         """Strips all comments from ACL header and all terms."""
         self.comments = []
@@ -888,11 +900,11 @@ class ACL(object):
 class Term(object):
     """An individual term from which an ACL is made"""
     def __init__(self, name=None, action='accept', match=None, modifiers=None,
-                 inactive=False, isglobal=False, extra=None):
+                 inactive=False, is_global=False, extra=None):
         self.name = name
         self.action = action
         self.inactive = inactive
-        self.isglobal = isglobal
+        self.is_global = is_global
         self.extra = extra
         if match is None:
             self.match = Matches()
@@ -1028,8 +1040,11 @@ class Term(object):
         """
         Output term to IOS traditional format.
 
-        :param prefix: Prefix to use, default: 'access-list'
-        :param acl_name: Name of access-list to display
+        :param prefix:
+            Prefix to use, default: 'access-list'
+
+        :param acl_name:
+            Name of access-list to display
         """
         comments = [c.output_ios() for c in self.comments]
         # If prefix isn't set, but name is, force the template
@@ -1313,6 +1328,17 @@ junos_match_ordering_list = (
     'icmp-type' )
 
 junos_match_order = {}
+
+
+#
+# Ref: http://juni.pr/ZOoTRG
+junos_load_options = (
+    'merge',
+    'override',
+    'replace',
+    'set' # Load a cfg that contains `set` configuration mode commands.
+    'upadate',
+)
 
 for i, match in enumerate(junos_match_ordering_list):
     junos_match_order[match] = i*2
@@ -2134,7 +2160,7 @@ def parse(input_data):
     Parse a complete ACL and return an ACL object. This should be the only
     external interface to the parser.
 
-    >>> from trigger.acl import parse
+    >>> from acl import parse
     >>> aclobj = parse("access-list 123 permit tcp any host 10.20.30.40 eq 80")
     >>> aclobj.terms
     [<Term: None>]

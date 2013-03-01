@@ -2,13 +2,13 @@
 
 """
 Various tools for use in scripts or other modules. Heavy lifting from tools
-that have matured over time have been moved into this module. 
+that have matured over time have been moved into this module.
 """
 
 __author__ = 'Jathan McCollum, Eileen Tschetter'
 __maintainer__ = 'Jathan McCollum'
 __email__ = 'jathan.mccollum@teamaol.com'
-__copyright__ = 'Copyright 2010-2011, AOL Inc.'
+__copyright__ = 'Copyright 2010-2013, AOL Inc.'
 
 from collections import defaultdict
 import datetime
@@ -17,48 +17,64 @@ import os
 import re
 import sys
 import tempfile
-from time import strftime,localtime
+from time import strftime, localtime
 
 from .parser import *
-from trigger.conf import settings
+from .rcs import RCS
+# TODO (jathan): Implement a ``conf`` module similar to acl's
+#from .conf import settings
 
 
 # Defaults
+# TODO (jathan): Move these to `~acl.conf.settings`
 FIREWALL_DIR = '/data/firewalls'
 DEBUG = False
 DATE_FORMAT = "%Y-%m-%d"
 DEFAULT_EXPIRE = 6 * 30 # 6 months
+DEFAULT_ACTION = ('accept',)
 
 
 # Exports
-__all__ = ('create_trigger_term', 'create_access', 'check_access', 'ACLScript',
-          'process_bulk_loads', 'get_bulk_acls', 'get_comment_matches', 
-           'write_tmpacl', 'diff_files', 'worklog', 'insert_term_into_acl',
-           'create_new_acl')
+__all__ = ('create_acl_term', 'create_access', 'check_access', 'ACLScript',
+           'get_comment_matches', 'write_tmpacl', 'diff_files', 'worklog',
+           'insert_term_into_acl', 'create_new_acl')
 
 
 # Functions
-def create_trigger_term(source_ips=[],
-                       dest_ips=[],
-                       source_ports=[],
-                       dest_ports=[],
-                       protocols=[], 
-                       action=['accept'],
-                       name="generated_term"):
-    """Constructs & returns a Term object from constituent parts."""
-    term = Term()
+def create_acl_term(src_ips=None, dst_ips=None, src_ports=[], dst_ports=[],
+                    protocols=None, action=None, name="generated_term"):
+    """
+    Constructs and returns a `~acl.Term` object from constituent parts.
+    """
+    if src_ips is None:
+        src_ips = []
+    if dst_ips is None:
+        dst_ips = []
+    if src_ports is None:
+        src_ports = []
+    if dst_ports is None:
+        dst_ports = []
+    if protocols is None:
+        protocols = []
+    if action is None:
+        action = DEFAULT_ACTION
+
+    term = Term(name=name, action=action)
     term.action = action
     term.name = name
-    for key, data in {'source-address': source_ips,
-                     'destination-address': dest_ips,
-                     'source-port': source_ports,
-                     'destination-port': dest_ports,
-                     'protocol': protocols}.iteritems():
+    field_map = {
+        'source-address': src_ips,
+        'destination-address': dst_ips,
+        'source-port': src_ports,
+        'destination-port': dst_ports,
+        'protocol': protocols,
+    }
+    for key, data in field_map.iteritems():
         for n in data:
             if key in term.match:
                 term.match[key].append(n)
             else:
-                term.match[key] = [n] 
+                term.match[key] = [n]
     return term
 
 def check_access(terms_to_check, new_term, quiet=True, format='junos',
@@ -120,7 +136,7 @@ def check_access(terms_to_check, new_term, quiet=True, format='junos',
         complicated = False
 
         for comment in t.comments:
-            if 'trigger: make discard' in comment:
+            if 'acl: make discard' in comment:
                 t.setaction('discard') #.action[0] = 'discard'
                 t.extra = ' altered from accept for display purposes '
 
@@ -173,34 +189,35 @@ def check_access(terms_to_check, new_term, quiet=True, format='junos',
 
 def create_access(terms_to_check, new_term):
     """
-    Breaks a new_term up into separate constituent parts so that they can be 
-    compared in a check_access test.
-    
+    Breaks a new_term up into separate constituent parts so that they can be
+    compared in a `~acl.tools.check_access` test.
+
     Returns a list of terms that should be inserted.
     """
-    protos      = new_term.match.get('protocol', ['any'])
-    sources     = new_term.match.get('source-address', ['any'])
-    dests       = new_term.match.get('destination-address', ['any'])
-    sourceports = new_term.match.get('source-port', ['any'])
-    destports   = new_term.match.get('destination-port', ['any'])
-    
+    protocols = new_term.match.get('protocol', ['any'])
+    src_ips = new_term.match.get('source-address', ['any'])
+    dst_ips = new_term.match.get('destination-address', ['any'])
+    src_ports = new_term.match.get('source-port', ['any'])
+    dst_ports = new_term.match.get('destination-port', ['any'])
+
     ret = []
-    for proto in protos:
-        for source in sources:
-            for sourceport in sourceports:
-                for dest in dests:
-                    for destport in destports:
+    # The beauty of the uber-nested iteration is no lost on me. THE INDENTATION!
+    for proto in protocols:
+        for src_ip in src_ips:
+            for src_port in src_ports:
+                for dst_ip in dst_ips:
+                    for dst_port in dst_ports:
                         t = Term()
                         if str(proto) != 'any':
                             t.match['protocol'] = [proto]
-                        if str(source) != 'any':
-                            t.match['source-address'] = [source]
-                        if str(dest) != 'any':
-                            t.match['destination-address'] = [dest]
-                        if str(sourceport) != 'any':
-                            t.match['source-port'] = [sourceport]
-                        if str(destport) != 'any':
-                            t.match['destination-port'] = [destport]
+                        if str(src_ip) != 'any':
+                            t.match['source-address'] = [src_ip]
+                        if str(dst_ip) != 'any':
+                            t.match['destination-address'] = [dst_ip]
+                        if str(src_port) != 'any':
+                            t.match['source-port'] = [src_port]
+                        if str(dst_port) != 'any':
+                            t.match['destination-port'] = [dst_port]
                         if not check_access(terms_to_check, t):
                             ret.append(t)
 
@@ -231,11 +248,8 @@ def insert_term_into_acl(new_term, aclobj, debug=False):
         for term in terms_to_be_added:
             new_acl = generate_new_acl(term, new_acl)
     """
-    new_acl = ACL() # ACL comes from trigger.acl.parser
-    new_acl.policers = aclobj.policers
-    new_acl.format   = aclobj.format
-    new_acl.name     = aclobj.name
-    already_added    = False
+    new_acl = ACL(name=name, policers=policers, format=format) # ACL comes from acl.parser
+    already_added = False
 
     for c in aclobj.comments:
         new_acl.comments.append(c)
@@ -279,7 +293,7 @@ def insert_term_into_acl(new_term, aclobj, debug=False):
         if hit and not t.inactive and already_added == False:
             if not complicated and permitted is None:
                 for comment in t.comments:
-                    if 'trigger: make discard' in comment and \
+                    if 'acl: make discard' in comment and \
                         new_term.action[0] == 'accept':
                         new_aca.terms.append(new_term)
                         already_added = True
@@ -329,7 +343,7 @@ def get_comment_matches(aclobj, requests):
             #[matches.add(t) for c in t.comments if req in c]
 
     return matches
-    
+
 def update_expirations(matches, numdays=DEFAULT_EXPIRE):
     """Update expiration dates on matching terms. This modifies mutable objects, so use cautiously."""
     print 'matching terms:', [term.name for term in matches]
@@ -352,22 +366,27 @@ def update_expirations(matches, numdays=DEFAULT_EXPIRE):
                 print 'Fix the date and start the job again!'
                 import sys
                 sys.exit()
-    
+
             new_date = dstamp + datetime.timedelta(days=numdays)
             #print 'Before:\n' + comment.data + '\n'
             print 'Updated date for term: %s' % term.name
             comment.data = comment.data.replace(date, datetime.datetime.strftime(new_date, DATE_FORMAT))
             #print 'After:\n' + comment.data
 
-def write_tmpacl(acl, process_name='_tmpacl'):
-    """Write a temporary file to disk from an Trigger acl.ACL object & return the filename"""
-    tmpfile = tempfile.mktemp() + process_name
-    f = open(tmpfile, 'w')
-    for x in acl.output(acl.format, replace=True):
-        f.write(x)
-        f.write('\n')
-    f.close()
+def write_tmpacl(aclobj, suffix='_tmpacl'):
+    """
+    Write a temporary file to disk and return the filename.
 
+    :param aclobj:
+        An`~acl.ACL` object.
+
+    :param suffix:
+        A suffix to use for the temp files.
+    """
+    tmpfile = tempfile.mktemp() + suffix
+    with open(tmpfile, 'w') as f:
+        for x in aclobj.output(aclobj.format, replace=True):
+            f.write(x + '\n')
     return tmpfile
 
 def diff_files(old, new):
@@ -377,7 +396,6 @@ def diff_files(old, new):
 def worklog(title, diff, log_string='updated by express-gen',
             firewall_dir=FIREWALL_DIR):
     """Save a diff to the ACL worklog"""
-    from .rcs import RCS
 
     date = strftime('%Y%m%d', localtime())
     filepath = os.path.join(firewall_dir, 'workdocs', 'workdoc.' + date)
@@ -404,11 +422,11 @@ class ACLScript:
     """
     def __init__(self, acl=None, mode='insert', cmd='acl_script',
       show_mods=True, no_worklog=False, no_changes=False):
-        self.source_ips   = []
-        self.dest_ips     = []
+        self.src_ips   = []
+        self.dst_ips     = []
         self.protocol     = []
-        self.source_ports = []
-        self.dest_ports   = []
+        self.src_ports = []
+        self.dst_ports   = []
         self.modify_terms = []
         self.bcomments    = []
         self.tempfiles    = []
@@ -451,8 +469,8 @@ class ACLScript:
         else:
             raise "invalid mode"
 
-        for k,v in {'--source-address-from-file':self.source_ips,
-                    '--destination-address-from-file':self.dest_ips,
+        for k,v in {'--source-address-from-file':self.src_ips,
+                    '--destination-address-from-file':self.dst_ips,
                    }.iteritems():
             if len(v) == 0:
                 continue
@@ -469,8 +487,8 @@ class ACLScript:
 
             argz.append('%s %s' % (k,tmpf))
 
-        for k,v in {'-p':self.source_ports,
-                    '-P':self.dest_ports}.iteritems():
+        for k,v in {'-p':self.src_ports,
+                    '-P':self.dst_ports}.iteritems():
 
             if not len(v):
                 continue
@@ -479,8 +497,9 @@ class ACLScript:
                 argz.append('%s %d' % (k,x))
 
         if len(self.modify_terms) and len(self.bcomments):
-            print "Can only define either modify_terms or between comments"
-            raise "Can only define either modify_terms or between comments"
+            msg = "Can only define either modify_terms or between comments"
+            print msg
+            raise msg
 
         if self.modify_terms:
             for x in self.modify_terms:
@@ -561,16 +580,16 @@ class ACLScript:
                 to.append(src)
 
     def add_src_host(self, data):
-        self._add_addr(self.source_ips, data)
+        self._add_addr(self.src_ips, data)
 
     def add_dst_host(self, data):
-        self._add_addr(self.dest_ips, data)
+        self._add_addr(self.dst_ips, data)
 
     def add_src_port(self, data):
-        self._add_port(self.source_ports, data)
+        self._add_port(self.src_ports, data)
 
     def add_dst_port(self, data):
-        self._add_port(self.dest_ports, data)
+        self._add_port(self.dst_ports, data)
 
     def add_modify_between_comments(self, begin, end):
         del self.modify_terms
@@ -587,13 +606,13 @@ class ACLScript:
         return self.protocol
 
     def get_src_hosts(self):
-        return self.source_ips
+        return self.src_ips
 
     def get_dst_hosts(self):
-        return self.dest_ips
+        return self.dst_ips
 
     def get_src_ports(self):
-        return self.source_ports
+        return self.src_ports
 
     def get_dst_ports(self):
-        return self.dest_ports
+        return self.dst_ports
