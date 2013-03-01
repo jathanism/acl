@@ -9,15 +9,15 @@ other.
 __author__ = 'Jathan McCollum, Mark Thomas'
 __maintainer__ = 'Jathan McCollum'
 __email__ = 'jathan.mccollum@teamaol.com'
-__copyright__ = 'Copyright 2007-2012, AOL Inc.'
-__version__ = '1.2.2'
+__copyright__ = 'Copyright 2007-2013, AOL Inc.'
+__version__ = '1.2.3'
 
 import IPy
 from acl.parser import (Protocol, check_range, literals, TIP,
                                 do_protocol_lookup, make_nondefault_processor,
                                 ACLParser, ACLProcessor, default_processor, S)
-from acl.tools import create_trigger_term
-from trigger import exceptions
+from .tools import create_acl_term
+from . import exceptions
 
 
 # TODO (jathan): Implement __all__
@@ -823,7 +823,7 @@ class NSPolicy(NetScreen):
                 dest_ports = serv_hash[protocol][source_ports]
                 #for dest_ports in serv_hash[protocol][source_ports]:
                 print "  dest ports", dest_ports
-                term = create_trigger_term(
+                term = create_acl_term(
                         source_ips   = source_addrs,
                         dest_ips     = dest_addrs,
                         source_ports = [source_ports],
@@ -868,7 +868,7 @@ class NSPolicy(NetScreen):
         for protocol in serv_hash:
             for source_ports in serv_hash[protocol]:
                 dest_ports = serv_hash[protocol][source_ports]
-                term = create_trigger_term(
+                term = create_acl_term(
                         source_ips   = source_addrs,
                         dest_ips     = dest_addrs,
                         source_ports = [source_ports],

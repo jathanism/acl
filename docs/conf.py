@@ -28,7 +28,7 @@ def issues_role(name, rawtext, text, lineno, inliner, options={}, content=[]):
     """
     # Old-style 'just the issue link' behavior
     issue_no = utils.unescape(text)
-    ref = "https://github.com/aol/trigger/issues/" + issue_no
+    ref = "https://github.com/jathanism/acl/issues/" + issue_no
     link = nodes.reference(rawtext, '#' + issue_no, refuri=ref, **options)
     ret = [link]
     # Additional 'new-style changelog' stuff
@@ -47,14 +47,14 @@ def issues_role(name, rawtext, text, lineno, inliner, options={}, content=[]):
 for x in issue_types + ('issue',):
     roles.register_local_role(x, issues_role)
 
-# Also ripped from Fabric, but we need to nail down the versioning and release process for Trigger before we start to use this.
+# Also ripped from Fabric, but we need to nail down the versioning and release process before we start to use this.
 '''
 year_arg_re = re.compile(r'^(.+?)\s*(?<!\x00)<(.*?)>$', re.DOTALL)
 def release_role(name, rawtext, text, lineno, inliner, options={}, content=[]):
     """
     Invoked as :release:`N.N.N <YYYY-MM-DD>`.
 
-    Turns into: <b>YYYY-MM-DD</b>: released <b><a>Trigger N.N.N</a></b>, with
+    Turns into: <b>YYYY-MM-DD</b>: released <b><a>ACL N.N.N</a></b>, with
     the link going to the Github source page for the tag.
     """
     # Make sure year has been specified
@@ -87,7 +87,7 @@ sys.path.append(os.path.join(this, "_ext"))
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 #extensions = ['sphinx.ext.autodoc', 'sphinx.ext.coverage']
-extensions = ['sphinx.ext.autodoc', 'sphinx.ext.coverage', 'triggerdocs']
+extensions = ['sphinx.ext.autodoc', 'sphinx.ext.coverage', 'acldocs']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -102,15 +102,14 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'Trigger'
-copyright = u'2006-%s, AOL Inc' % datetime.now().year
+project = u'ACL'
+#copyright = u'2006-%s, AOL Inc' % datetime.now().year
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
 # built documents.
 sys.path.insert(0, os.path.abspath(os.path.join(os.getcwd(), '..')))
-#from trigger import __version__ as trigger_version
-from trigger import full_version, short_version
+from acl import full_version, short_version
 
 # The short X.Y version.
 version = short_version
@@ -228,7 +227,7 @@ html_static_path = ['_static']
 #html_file_suffix = ''
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'Triggerdoc'
+htmlhelp_basename = 'acldoc'
 
 
 # -- Options for LaTeX output --------------------------------------------------
@@ -242,7 +241,7 @@ htmlhelp_basename = 'Triggerdoc'
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('index', 'Trigger.tex', u'Trigger Documentation',
+  ('index', 'acl.tex', u'ACL Documentation',
    u'Jathan McCollum, Eileen Tschetter, Mark Ellzey Thomas, Michael Shields', 'manual'),
 ]
 

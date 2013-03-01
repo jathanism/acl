@@ -12,7 +12,8 @@ from acl import full_version as __version__
 
 # Names of required packages
 requires = [
-    #'foo',
+    'IPy>=0.75',
+    'SimpleParse>=2.1.1',
 ]
 
 class CleanCommand(Command):
