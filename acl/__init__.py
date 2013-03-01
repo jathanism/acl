@@ -19,6 +19,10 @@ full_version = '.'.join(str(x) for x in __version__)
 release = full_version
 short_version = '.'.join(str(x) for x in __version__[0:3])
 
-from .parser import *
+try:
+    from .parser import *
+except ImportError:
+    print "Skipping parser imports"
+    pass # So we can import __version__ :/
 
 __all__ = ('parse', 'ACL', 'Term', 'Matches', 'RangeList', 'Comment')
