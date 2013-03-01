@@ -17,7 +17,7 @@ Parsing Access-lists
 
 Let's start with a simple Cisco ACL::
 
-    >>> from trigger.acl import parse
+    >>> from acl import parse
     >>> aclobj = parse("access-list 123 permit tcp any host 10.20.30.40 eq 80")
     >>> aclobj.terms
     [<Term: None>]
