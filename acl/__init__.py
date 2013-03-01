@@ -13,7 +13,7 @@ __author__ = 'Jathan McCollum'
 __maintainer__ = 'Jathan McCollum'
 __email__ = 'jathan.mccollum@teamaol.com'
 __copyright__ = 'Copyright 2010-2013, AOL Inc.'
-__version__ = (0, 1)
+__version__ = (0, 2)
 
 full_version = '.'.join(str(x) for x in __version__)
 release = full_version
