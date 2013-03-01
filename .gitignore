@@ -10,7 +10,6 @@ dist
 build
 eggs
 parts
-bin
 var
 sdist
 develop-eggs
@@ -37,7 +36,7 @@ nosetests.xml
 # Vim temp files
 .*.swp
 
-# Mac OS index files
+# Mac OS X index files
 .DS_Store
 
 # Docutils (docs) build dir
