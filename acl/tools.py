@@ -137,8 +137,9 @@ def check_access(terms_to_check, new_term, quiet=True, format='junos',
 
         for comment in t.comments:
             if 'acl: make discard' in comment:
-                t.setaction('discard') #.action[0] = 'discard'
-                t.extra = ' altered from accept for display purposes '
+                t.action = 'discard'
+                #t.extra = ' altered from accept for display purposes '
+                t.makediscard = True # set the 'make discard' flag
 
         for k,v in t.match.iteritems():
 
@@ -223,6 +224,7 @@ def create_access(terms_to_check, new_term):
 
     return ret
 
+# XXX (jathan): THis code is not currently implemented.
 def insert_term_into_acl(new_term, aclobj, debug=False):
     """
     Return a new ACL object with the new_term added in the proper place based
@@ -298,10 +300,10 @@ def insert_term_into_acl(new_term, aclobj, debug=False):
                         new_acl.terms.append(new_term)
                         already_added = True
                         permitted = True
-                if t.action[0] in ('discard','reject') and \
-                   new_term.action[0] in ('discard','reject'):
+                if t.action[0] in ('discard', 'reject') and \
+                   new_term.action[0] in ('discard', 'reject'):
                     permitted = False
-                elif t.action[0] in ('discard','reject'):
+                elif t.action[0] in ('discard', 'reject'):
                     permitted = False
                     new_acl.terms.append(new_term)
                     already_added = True
