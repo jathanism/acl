@@ -245,19 +245,29 @@ ports = {
 }
 
 dscp_names = {
-    'ef': 46,
+    'be': 0,
+    'cs0': 0,
+    'cs1': 8,
     'af11': 10,
     'af12': 12,
     'af13': 14,
+    'cs2': 16,
     'af21': 18,
     'af22': 20,
     'af23': 22,
+    'cs3': 24,
     'af31': 26,
     'af32': 28,
     'af33': 30,
+    'cs4': 32,
     'af41': 34,
     'af42': 36,
-    'af43': 38 }
+    'af43': 38,
+    'cs5': 40,
+    'ef': 46,
+    'cs6': 48,
+    'cs7': 56
+}
 
 precedence_names = {
     'critical-ecp': 0xa0,        # JunOS
@@ -1432,6 +1442,10 @@ class Matches(MyDict):
             check_range(arg, 0, 255)
         elif key in ('first-fragment', 'is-fragment'):
             arg = []
+        elif key == 'dscp':
+            pass
+        elif key == 'precedence':
+            pass
         else:
             raise exceptions.UnknownMatchType('unknown match type "%s"' % key)
 
