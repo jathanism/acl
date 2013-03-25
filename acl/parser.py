@@ -1380,9 +1380,9 @@ class Matches(MyDict):
     access checks.
     """
     def __setitem__(self, key, arg):
-        if key in ('ah-spi', 'destination-mac-address', 'dscp', 'ether-type',
+        if key in ('ah-spi', 'destination-mac-address', 'ether-type',
                    'esp-spi', 'forwarding-class', 'interface-group',
-                   'precedence', 'source-mac-address', 'vlan-ether-type',
+                   'source-mac-address', 'vlan-ether-type',
                    'fragment-flags', 'source-class', 'destination-class'):
             raise NotImplementedError('match on %s not implemented' % key)
 
