@@ -52,3 +52,47 @@ Checking Access
 ~~~~~~~~~~~~~~~
 
 Coming Soon(TM).
+
+Noteworthy
+~~~~~~~~~~
+
+DSCP:
+Juniper does not allow the inclusion of 'dscp' and 'dscp-except' in the same term.  The latter will override any others.
+
+Observe::
+
+    me@router# load merge terminal
+    [Type ^D at a new line to end input]
+    firewall filter asdf {
+        term DSCP_term {
+            /* Project:"non-zero TOS value DCSP" */
+            from {
+                dscp-except [ af11 cs0 ];
+                dscp [ af11 be cs0 cs7 ];
+            }
+            then {
+                count match_non_zero_DCSP;
+                port-mirror;
+                next term;
+            }
+        }
+    }
+    load complete
+
+    [edit]
+    me@router# show firewall filter asdf
+    term DSCP_term {
+        /* Project:"non-zero TOS value DCSP" */
+        from {
+            dscp [ af11 be cs0 cs7 ];
+        }
+        then {
+            count match_non_zero_DCSP;
+            port-mirror;
+            next term;
+        }
+    }
+
+    [edit]
+    me@router#
+
