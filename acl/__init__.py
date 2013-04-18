@@ -9,11 +9,11 @@ ACL and return an ACL object that can be easily translated to any supported
 vendor syntax.
 """
 
-__author__ = 'Jathan McCollum'
+__author__ = 'Jathan McCollum, Mike Biancaniello, Mike Harding'
 __maintainer__ = 'Jathan McCollum'
-__email__ = 'jathan.mccollum@teamaol.com'
+__email__ = 'jathanism@aol.com'
 __copyright__ = 'Copyright 2010-2013, AOL Inc.'
-__version__ = (0, 2)
+__version__ = (0, 3)
 
 full_version = '.'.join(str(x) for x in __version__)
 release = full_version
